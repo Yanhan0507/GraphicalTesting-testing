@@ -1,0 +1,314 @@
+// this class utilize the opencv to do image processing, and output the result.
+
+package Recognition;
+
+import java.awt.image.BufferedImage;
+import java.io.BufferedReader;
+import java.io.ByteArrayInputStream;
+import java.io.FileReader;
+import java.io.InputStream;
+import java.util.ArrayList;
+import java.util.List;
+
+import javax.imageio.ImageIO;
+import javax.swing.ImageIcon;
+import javax.swing.JFrame;
+import javax.swing.JLabel;
+
+import org.opencv.core.Core;
+import org.opencv.core.Mat;
+import org.opencv.core.MatOfByte;
+import org.opencv.core.MatOfPoint;
+import org.opencv.core.Point;
+import org.opencv.core.Rect;
+import org.opencv.core.Scalar;
+import org.opencv.core.Size;
+import org.opencv.highgui.Highgui;
+import org.opencv.imgproc.Imgproc;
+
+public class Image_Reg {
+	public Mat img_mat = null;
+	final static int numberOfFrame = 100;
+	final static int threshold = 5;
+	List<Integer> signal = new ArrayList<Integer>();
+	List<Integer> trajectory = new ArrayList<Integer>();
+	List<List<Target>> tanks = new ArrayList<List<Target>>();
+	
+	public void getSignal(String filename) {
+		// left 1; right 2; up 3; down 4;
+		try {
+			FileReader fr = new FileReader(filename);
+			BufferedReader br = new BufferedReader(fr);
+			String str = br.readLine();
+			while (str != null) {
+				if (str.equals("left")) {
+					signal.add(1);
+				} else if (str.equals("right")) {
+					signal.add(2);
+				} else if (str.equals("up")) {
+					signal.add(3);
+				} else if (str.equals("down")) {
+					signal.add(4);
+				}
+				str = br.readLine();
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+
+	}
+
+	public void getTrajectory(List<List<Target>> A) {
+		// left 1; right 2; up 3; down 4;
+		List<Target> x = A.get(0);
+		int X = 0;
+		int Y = 0;
+		for (Target y : x) {
+			if ((y.color[0] == 0) && (y.color[1] == 0)
+					&& (y.color[2] == 255) && (y.width * y.height > 250)) {
+				X = y.x;
+				Y = y.y;
+				break;
+			}
+		}
+
+		for (List<Target> i : A) {
+			for (Target j : i) {
+				if ((j.color[0] == 0) && (j.color[1] == 0)
+						&& (j.color[2] == 255) && (j.width * j.height > 250)) {
+					if(j.x > X) {
+						trajectory.add(2);
+						X = j.x;
+						Y = j.y;
+						break;
+					}
+					if(j.x < X) {
+						trajectory.add(1);
+						X = j.x;
+						Y = j.y;
+						break;
+					}
+					if(j.y > Y) {
+						trajectory.add(4);
+						X = j.x;
+						Y = j.y;
+						break;
+					}
+					if(j.y < Y) {
+						trajectory.add(3);
+						X = j.x;
+						Y = j.y;
+						break;
+					}	
+						X = j.x;
+						Y = j.y;
+				}
+			}
+		}
+	}
+	public boolean getControl(){
+		if(trajectory.size() < signal.size()){
+			return false;
+		}
+		for(int i = 0; i < trajectory.size(); i++){
+			if(trajectory.get(i) != signal.get(i))
+				return false;
+		}
+		return true;
+	}
+	public List<Target> imgRead(String filename, int frame) {
+		Mat A = null;
+		List<Target> target_list = new ArrayList<Target>();
+		A = Highgui.imread(filename, Highgui.CV_LOAD_IMAGE_GRAYSCALE);
+		img_mat = A.submat(25, A.rows() - 4, 5, A.cols() - 5);
+		Mat B = Highgui.imread(filename).submat(25, A.rows() - 4, 5,
+				A.cols() - 5);
+		Size size = new Size(5, 5);
+
+		Mat img_gaussian = img_mat;
+		Imgproc.GaussianBlur(img_mat, img_gaussian, size, 3);
+
+		Mat img_sobel = img_gaussian;
+		Imgproc.Canny(img_gaussian, img_sobel, 0, 190);
+
+		Mat img_threshold = img_sobel.clone();
+
+		img_mat = img_threshold;
+
+		List<MatOfPoint> contours = new ArrayList<MatOfPoint>();
+		Mat img_hierarchy = img_threshold.clone();
+		Imgproc.findContours(img_threshold.clone(), contours, img_hierarchy, 0,
+				1);
+		img_mat = B;
+		int x;
+		int y;
+		// contours.size()
+		for (int i = 0; i < contours.size(); i++) {
+			Rect mr = Imgproc.boundingRect(contours.get(i));
+			x = (int) (mr.x + mr.width * 3 / 8);
+			y = (int) (mr.y + mr.height * 1 / 4);
+			Target rect_target = new Target(mr.x, mr.y, mr.width, mr.height,
+					B.get(y, x), frame);
+			if (mr.area() > 6)
+				target_list.add(rect_target);
+		}
+		return target_list;
+	}
+
+	public List<List<Target>> Image_Checking() { // each list<target> in
+													// list<list<target>> stores
+													// all static elements for
+													// each frame
+		String fileName = "D:/2015Spring/Java_Project/Image_Recognition/Input/";
+		String imageFormat = "png";
+
+		List<List<Target>> result = new ArrayList<List<Target>>();
+		for (int i = 0; i + threshold < numberOfFrame - 1; i++) {
+
+			List<Target> resultTmp = new ArrayList<Target>(); // put the static
+																// element at
+																// this frame
+																// into list
+																// resultTmp
+			List<List<Target>> tmp = new ArrayList<List<Target>>(); // put the
+																	// following
+																	// five
+																	// lists for
+																	// next 5
+																	// frames in
+																	// tmp
+			String name;
+			for (int j = 0; j < threshold; j++) {
+				name = fileName + String.format("%1$03d", i + 1 + j) + "."
+						+ imageFormat;
+				List<Target> tmpList = imgRead(name, i + j);
+				if(j == 0){
+					tanks.add(new ArrayList<Target>(tmpList));  // every time put the first frame in the tanks
+				}
+				tmp.add(tmpList); // put the tmpList to tmp, so after this for
+									// loop, tmp contains five list
+			}
+
+			List<Target> list = tmp.get(0); // get the first list
+			int[] record = new int[list.size()]; // record the value for each
+													// element
+
+			for (int m = 1; m < tmp.size(); m++) {
+				List<Target> proList = tmp.get(m); // get each list from list1
+													// to list5
+				for (int x = 0; x < list.size(); x++) { // this two for loops
+														// comparing each
+														// element at list with
+														// each element at
+														// proList
+					Target candA = list.get(x);
+					for (int y = 0; y < proList.size(); y++) {
+						Target candB = proList.get(y);
+						if (candA.equals(candB)) {
+							record[x] += 1;
+							break; // maybe unnecessary, but we can ensure that
+									// each element be counted at most once
+						}
+					}
+				}
+			}
+			for (int m = 0; m < record.length; m++) { // record[m] stands for
+														// the "static" index of
+														// the list.get(m)
+				if (record[m] == threshold - 1) {
+					resultTmp.add(list.get(m));
+				}
+			}
+
+			result.add(resultTmp);
+		}
+		return result;
+	}
+
+	public void drawTarget(List<List<Target>> S) {
+		int num = 0;
+		String fileName_1 = "D:/2015Spring/Java_Project/Image_Recognition/Input/";
+		String fileName_2 = "D:/2015Spring/Java_Project/Image_Recognition/Output1/";
+		String imageFormat = "png";
+		Scalar s = new Scalar(0, 0, 255);
+		for (List<Target> i : S) {
+			if (i.size() > 0) {
+				String name_1 = fileName_1 + String.format("%1$03d", num + 1)
+						+ "." + imageFormat;
+				String name_2 = fileName_2 + String.format("%1$03d", num + 1)
+						+ "." + imageFormat;
+				Mat A = Highgui.imread(name_1);
+				Mat B = A.submat(25, A.rows() - 4, 5, A.cols() - 5);
+				for (Target j : i) {
+					if((j.width * j.height < 1500)&&((j.color[2] != 255)&&(j.width * j.height > 30) || (j.color[2] == 255)&&(j.width * j.height < 200)))
+					{
+					Point p1 = new Point(j.x, j.y);
+					Point p2 = new Point((j.x + j.width), (j.y + j.height));
+					Core.rectangle(B, p1, p2, s);
+					}
+				}
+				Highgui.imwrite(name_2, B);
+			}
+			num = num + 1;
+		}
+
+	}
+
+	public void drawRedTarget(List<List<Target>> S) {
+		int num = 0;
+		String fileName_1 = "D:/2015Spring/Java_Project/Image_Recognition/Input/";
+		String fileName_2 = "D:/2015Spring/Java_Project/Image_Recognition/Output2/";
+		String imageFormat = "png";
+		Scalar s = new Scalar(0, 0, 255);
+		for (List<Target> i : S) {
+			if (i.size() > 0) {
+				String name_1 = fileName_1 + String.format("%1$03d", num + 1)
+						+ "." + imageFormat;
+				String name_2 = fileName_2 + String.format("%1$03d", num + 1)
+						+ "." + imageFormat;
+				Mat A = Highgui.imread(name_1);
+				Mat B = A.submat(25, A.rows() - 4, 5, A.cols() - 5);
+				for (Target j : i) {
+					if ((j.color[0] == 0) && (j.color[1] == 0)
+							&& (j.color[2] == 255) && (j.width * j.height > 250)){
+						Point p1 = new Point(j.x, j.y);
+						Point p2 = new Point((j.x + j.width), (j.y + j.height));
+						Core.rectangle(B, p1, p2, s);
+					}
+				}
+				Highgui.imwrite(name_2, B);
+			}
+			num = num + 1;
+		}
+
+	}
+	public void showResult() {
+		MatOfByte matOfByte = new MatOfByte();
+		Highgui.imencode(".jpg", img_mat, matOfByte);
+		byte[] byteArray = matOfByte.toArray();
+		BufferedImage bufImage = null;
+		try {
+			InputStream in = new ByteArrayInputStream(byteArray);
+			bufImage = ImageIO.read(in);
+			JFrame frame = new JFrame();
+			frame.getContentPane().add(new JLabel(new ImageIcon(bufImage)));
+			frame.pack();
+			frame.setVisible(true);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
+
+	public static void main(String[] args) {
+		System.loadLibrary(Core.NATIVE_LIBRARY_NAME);
+		Image_Reg Tank = new Image_Reg();
+		Tank.getSignal("D:/2015Spring/Java_Project/Yanhan/abc.txt");
+		List<List<Target>> I_C = Tank.Image_Checking();
+		//Tank.drawRedTarget(Tank.tanks);
+		Tank.drawTarget(I_C);
+		//Tank.showResult();
+		//Tank.getTrajectory(Tank.tanks);
+		//System.out.println(Tank.getControl());
+	}
+
+}
