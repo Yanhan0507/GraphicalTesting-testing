@@ -1,0 +1,66 @@
+// Printer can create the control signal, and record it in a text file
+
+import java.io.BufferedWriter;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.util.Random;
+
+public class printer {
+	public void doit(int a){
+		Random r1 = new Random(100);
+		Random r2 = new Random(4);
+		try {
+			FileWriter fw = new FileWriter("D:/2015Spring/Java_Project/Yanhan/abc.txt");
+			BufferedWriter bw = new BufferedWriter(fw);
+			String bullet = "control";
+			String direction = "down";
+			int tmp = 0;
+			for(int i=0; i<a; i++){
+				int fire  = r1.nextInt(100);
+				tmp++;			
+				if(tmp > 4){
+					int dir = r2.nextInt(4);
+					if(dir == 0){
+						direction = "up";
+					}
+					else if(dir == 1){
+						direction = "down";
+					}
+					else if(dir == 2){
+						direction = "left";
+					}
+					else if(dir == 3){
+						direction = "right";
+					}
+					else{
+						direction = "stop";
+					}
+					tmp = 0;
+				}
+				if(fire < 20){
+					bullet = "control";
+					bw.write(bullet);
+					bw.newLine();
+				}
+				else if(fire > 30 && fire <36){
+					bullet = "X";
+					bw.write(bullet);
+					bw.newLine();
+				}
+				bw.write(direction);
+				bw.newLine();
+
+				bw.flush();
+			}
+			fw.close();
+			bw.close();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+	}
+	public static void main(String[] args){
+		printer p = new printer();
+		p.doit(25);
+	}
+}
