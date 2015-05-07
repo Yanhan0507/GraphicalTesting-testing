@@ -4,6 +4,8 @@ It is the final project of Software Testing, which is a graduate course taught b
 This course introduces the basics of software testing theory and practice, and then presents some recently
 developed techniques for systematically finding bugs in programs and improving their reliability. 
 
+This project will help developers to test their GUI. Given the software implementation, criteria(what is correct and what is wrong), and control singals, the system can out put the result. If everything goes well, it will return true, otherwise, it returns false, and highlight objects with wrong behaviors at each frame.
+
 ## Functionality description
 
 There are mainly two parts of this project: driver and image processing part.
