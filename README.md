@@ -1,10 +1,16 @@
-# GraphicalTesting
+# Horus - GraphicalTesting
 
-It is the final project of Software Testing, which is a graduate course taught by Prof. Sarfraz Khurshid at UT Austin.
-This course introduces the basics of software testing theory and practice, and then presents some recently
-developed techniques for systematically finding bugs in programs and improving their reliability. 
+The basic idea is to build a testing system, which can help developer to determine the software GUI correctness.
+The system actually combines the software testing knowledge with computer vision technologies. It can determine the
+correctness of software GUI according to the criteria given by developers themselves.
+
+The Horus is actually final project of Software Testing class, which is a graduate course taught by Prof. Sarfraz 
+Khurshid at UT Austin. This course introduces the basics of software testing theory and practice, and then presents 
+some recently developed techniques for systematically finding bugs in programs and improving their reliability. 
 
 This project will help developers to test their GUI. Given the software implementation, criteria(what is correct and what is wrong), and control singals, the system can out put the result. If everything goes well, it will return true, otherwise, it returns false, and highlight objects with wrong behaviors at each frame.
+
+We want to make it as a open source project, cuz we want to provide more features for Horus. Right now, it can only deal with the criteria regarding object size and color. 
 
 ## Functionality description
 
